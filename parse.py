@@ -1,5 +1,8 @@
 import json
+import os
 
+
+words_path = os.path.join(os.path.dirname(__file__), 'words_dictionary.json')
 
 def spoof_regex(pattern):
     pat_list = pattern.split('.')
@@ -19,7 +22,7 @@ def spoof_regex(pattern):
     return regex_key
             
 def get_words():
-    with open('words_dictionary.json', 'r') as f:
+    with open(words_path, 'r') as f:
         dictionary = json.loads(f.read())
     return dictionary
 
