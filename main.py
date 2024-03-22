@@ -49,8 +49,9 @@ else:
         options[opt] = p.word_score(opt, p.appearance_of_letter(options))
         
     if argparse.non:
-        for np in argparse.non:
-            options = {k:v for k,v in options.items() if not re.match(argparse.non, k)} 
+        np_list = argparse.non.split(',')
+        for np in np_list:
+            options = {k:v for k,v in options.items() if not re.match(np, k)}
     
 
 options = dict(sorted(options.items(), key=lambda x: x[1]))
