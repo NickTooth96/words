@@ -37,7 +37,9 @@ def appearance_of_letter(words):
 
 def word_score(word, letter_frequency):
     score = 0
-    temp = word
+    for letter in word:
+        if letter in 'rstl':
+            score += letter_frequency[letter] * 1.5
 
     for letter in set(word):
         score += letter_frequency[letter]

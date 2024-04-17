@@ -75,14 +75,20 @@ class MyWidget(QtWidgets.QWidget):
         self.error.setText("An error has occured")
         self.error.setWindowTitle("Input Error")
         self.error.setStandardButtons(QtWidgets.QMessageBox.Ok)
+
+        self.plurals = QtWidgets.QCheckBox("Exclude Plurals?")
+        self.plurals.setFont(QtGui.QFont("Times", 12, QtGui.QFont.Bold))
+        self.plurals.setChecked(False)
+        self.plurals.stateChanged.connect(self.exclude_plurals)
         
 
         self.layout = QtWidgets.QFormLayout(self)
         self.layout.addRow(self.text)
         self.layout.addRow(self.text_pattern, self.pattern)
-        self.layout.addRow(self.text_has, self.has)
         self.layout.addRow(self.text_hasnot, self.hasnot)
+        self.layout.addRow(self.text_has, self.has)        
         self.layout.addRow(self.text_non_pattern, self.non_pattern)
+        self.layout.addRow(self.plurals)
         self.layout.addRow(self.button)  
         self.layout.addRow(self.words_found)    
         self.layout.addWidget(self.list_widget)
@@ -91,6 +97,9 @@ class MyWidget(QtWidgets.QWidget):
 
 
     @QtCore.Slot()
+    def exclude_plurals(self):
+        pass
+
     def on_text_changed(self):
         self.button.setEnabled(bool(self.pattern.text()))
 
@@ -101,9 +110,16 @@ class MyWidget(QtWidgets.QWidget):
         hasnot = self.hasnot.text()
         non_pattern = self.non_pattern.text()
 
+        if self.plurals.isChecked():
+            if len(non_pattern) > 0:
+                non_pattern += ",....s"
+            else:
+                non_pattern = "....s"
+
         script_path = os.path.join(os.path.dirname(__file__), 'main.py')
 
         cmd = ["python3", script_path,"--pattern", pattern]
+
         if has:
             cmd.extend(["--has", has])
         
@@ -125,10 +141,22 @@ class MyWidget(QtWidgets.QWidget):
 
             # remove all items from the list widget
             self.list_widget.clear()
-          
+
+            i = 1
+            self.list_widget.addItem("-- Top Choice --")
             for word in words:
-                item = QtWidgets.QListWidgetItem(f"{word} {words[word]}")
-                self.list_widget.addItem(item)
+                if words[word] == 100:                    
+                    item = QtWidgets.QListWidgetItem(f"{i}: {word} {words[word]}")
+                    self.list_widget.addItem(item)
+                    i += 1
+            if i < len(words.values()):
+                self.list_widget.addItem("-- Less Likely Choices --")
+            for word in words:
+                if words[word] < 100:
+                    item = QtWidgets.QListWidgetItem(f"{i}: {word} {words[word]}")
+                    self.list_widget.addItem(item)
+                    i += 1
+                
             
             self.words_found.setText(f"Words Found: {words_found}")
 
@@ -137,13 +165,22 @@ class MyWidget(QtWidgets.QWidget):
             self.error.exec()
 
 def check_error(error, command):
-   
-    common = have_common_elements(command[5], command[7])
-    common_element = common[1].pop() if common[0] else None
-    if common[0]:
-        msg = f"Yellow and Black letters \nhave common element '{common_element}'.\n"
+
+    
+    idx_pattern = command.index("--pattern") + 1
+    idx_has = command.index("--has") + 1 if "--has" in command else None
+    idx_hasnot = command.index("--has-not") + 1 if "--has-not" in command else None
+    
+    if have_common_elements(command[idx_has], command[idx_hasnot])[0]:
+        common = have_common_elements(command[idx_has], command[idx_hasnot])[1].pop()
+        msg = f"Yellow and Black letters \nhave common element '{common}'.\n"
         msg += "Please remove the common element from either Yellow or Black letters.\n"
-        msg += f"Consider input similar to '..{common_element}..' in Non Pattern."
+        msg += f"Consider input similar to '..{common}..' in Non Pattern."
+    elif have_common_elements(command[idx_pattern], command[idx_hasnot])[0]:
+        common = have_common_elements(command[idx_hasnot], command[idx_pattern])[1].pop()
+        msg = f"Pattern and Black letters have common element '{common}'.\n"
+        msg += f"Remove the '{common}' from Black letters."
+        msg += f"Use input similar to '..{common}..' in Non Pattern instead."
     else: 
         msg = error
     return msg
