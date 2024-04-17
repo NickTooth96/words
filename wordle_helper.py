@@ -29,12 +29,12 @@ class MyWidget(QtWidgets.QWidget):
         self.button.clicked.connect(self.run_script) 
 
         self.text_pattern = QtWidgets.QLabel("Pattern") 
-        self.text_pattern.setFont(QtGui.QFont("Times", 12, QtGui.QFont.Bold))   
+        self.text_pattern.setFont(QtGui.QFont("Times", 12, QtGui.QFont.Bold)) 
 
         self.text_has = QtWidgets.QLabel("Yellow Letters")
         self.text_has.setFont(QtGui.QFont("Times", 12, QtGui.QFont.Bold))
 
-        self.text_hasnot = QtWidgets.QLabel("Unused Letters")
+        self.text_hasnot = QtWidgets.QLabel("Black Letters")
         self.text_hasnot.setFont(QtGui.QFont("Times", 12, QtGui.QFont.Bold))
 
         self.text_non_pattern = QtWidgets.QLabel("Non Pattern")
@@ -45,6 +45,7 @@ class MyWidget(QtWidgets.QWidget):
         self.pattern.setFont(QtGui.QFont("Times", 12, QtGui.QFont.Bold))
         self.pattern.setPlaceholderText("Enter Data Source File Path or URL")
         self.pattern.textChanged.connect(self.on_text_changed)
+        self.pattern.setText(".....")
         # self.pattern.setStyleSheet("QLineEdit { background-color: yellow }")
 
         self.has = QtWidgets.QLineEdit()
@@ -69,6 +70,11 @@ class MyWidget(QtWidgets.QWidget):
         self.words_found = QtWidgets.QLabel("Words Found")
         self.words_found.setFont(QtGui.QFont("Times", 12, QtGui.QFont.Bold))
 
+        self.error = QtWidgets.QMessageBox()
+        self.error.setIcon(QtWidgets.QMessageBox.Critical)
+        self.error.setText("An error has occured")
+        self.error.setWindowTitle("Input Error")
+        self.error.setStandardButtons(QtWidgets.QMessageBox.Ok)
         
 
         self.layout = QtWidgets.QFormLayout(self)
@@ -107,11 +113,12 @@ class MyWidget(QtWidgets.QWidget):
         if non_pattern:
             cmd.extend(["--non", non_pattern])
 
-        # run the script
+        # run the script      
+        
         try:
             # print(f"Running command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, check=True, text=True, capture_output=True)
-            result = ast.literal_eval(result.stdout)
+            script = subprocess.run(cmd, check=True, text=True, capture_output=True)
+            result = ast.literal_eval(script.stdout)
             words = result[0]
             words_found = result[1]
             words = {k: v for k, v in sorted(words.items(), key=lambda item: item[1], reverse=True)}
@@ -126,7 +133,30 @@ class MyWidget(QtWidgets.QWidget):
             self.words_found.setText(f"Words Found: {words_found}")
 
         except subprocess.CalledProcessError as e:
-            print(f"Error running script: {e}")
+            self.error.setInformativeText(f"{check_error(e, cmd)}")
+            self.error.exec()
+
+def check_error(error, command):
+   
+    common = have_common_elements(command[5], command[7])
+    common_element = common[1].pop() if common[0] else None
+    if common[0]:
+        msg = f"Yellow and Black letters \nhave common element '{common_element}'.\n"
+        msg += "Please remove the common element from either Yellow or Black letters.\n"
+        msg += f"Consider input similar to '..{common_element}..' in Non Pattern."
+    else: 
+        msg = error
+    return msg
+
+def have_common_elements(a, b):
+    common_elements = set()
+    for char in a:
+        if char in b:
+            common_elements.add(char)
+    return bool(set(a) & set(b)), common_elements
+
+   
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
